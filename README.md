@@ -2,12 +2,22 @@
 
 Статический сайт [pmtiles.ru](https://pmtiles.ru): полноэкранная карта и страница «О проекте».
 
-Отечественное зеркало [pmtiles.io](https://pmtiles.io). Тайлы: `https://cdn.pmtiles.ru/20260915.pmtiles`.
+Отечественное зеркало [pmtiles.io](https://pmtiles.io). Тайлы отдаёт локальный Caddy с `cdn.pmtiles.ru` по `/tiles/`.
 
-Локально (прокси на CDN, у него CORS только для esya.ru):
+## Docker
+
+Контейнер `pmtiles_ru` в сети `web_network`, HTTP/2 cleartext на `:80` — как FrankenPHP у GaMiKo / ews / GaMsh. Снаружи его забирает [CaddyProxy](../CaddyProxy).
 
 ```bash
-python3 tools/serve.py
+docker compose up -d --build
 ```
 
-Откройте http://127.0.0.1:8765/
+Прямой заход: http://127.0.0.1:8091/
+
+Через прокси: https://pmtiles.ru/ (нужен запущенный `caddy_main_proxy`).
+
+Прод без bind-mount:
+
+```bash
+docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+```

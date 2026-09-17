@@ -1,0 +1,19 @@
+services:
+  caddy:
+    image: ${IMAGES_PREFIX:-}pmtiles-ru
+    restart: unless-stopped
+    container_name: pmtiles_ru
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web_network
+
+networks:
+  web_network:
+    driver: bridge
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:

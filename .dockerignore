@@ -1,0 +1,11 @@
+.git/
+.idea/
+.vscode/
+**/.DS_Store
+**/*.log
+README.md
+tools/
+compose.yaml
+compose.override.yaml
+compose.prod.yaml
+Dockerfile

@@ -1,0 +1,5 @@
+# Production environment override
+services:
+  caddy:
+    build:
+      context: .

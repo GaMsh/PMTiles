@@ -13,11 +13,8 @@ maplibregl.setWorkerUrl('https://cdn.jsdelivr.net/npm/maplibre-gl@6.9.0/dist/map
 const protocol = new Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
 
-const localHost = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
-const proxyPath = el.dataset.devProxy;
-const pmtilesUrl = localHost && proxyPath
-    ? `pmtiles://${location.origin}${proxyPath}`
-    : el.dataset.pmtilesUrl;
+const pmtilesUrl = el.dataset.pmtilesUrl
+    || `pmtiles://${location.origin}/tiles/${PMTILES_VERSION}.pmtiles`;
 
 const center = (el.dataset.center || '99.0,61.5').split(',').map(Number);
 const zoom = Number(el.dataset.zoom || '3');

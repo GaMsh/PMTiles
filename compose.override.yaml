@@ -1,0 +1,12 @@
+# Development environment override
+services:
+  caddy:
+    build:
+      context: .
+    ports:
+      - "8091:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./public:/srv:ro
+    extra_hosts:
+      - host.docker.internal:host-gateway
