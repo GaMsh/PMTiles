@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>О проекте — pmtiles.ru</title>
+    <meta name="description" content="pmtiles.ru — отечественное зеркало проекта pmtiles.io: формат PMTiles и планетарные тайлы Protomaps на российских серверах.">
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+    <header class="site-header">
+        <a class="site-header__brand" href="../">pmtiles.ru</a>
+        <a class="site-header__back" href="../">К карте</a>
+    </header>
+    <main class="article">
+        <h1>О проекте</h1>
+        <p class="lead">
+            pmtiles.ru — отечественное зеркало проекта
+            <a href="https://pmtiles.io" rel="noreferrer">pmtiles.io</a>:
+            формата архива картографических тайлов PMTiles и инструментов вокруг него.
+        </p>
+
+        <p>
+            PMTiles придумали в <a href="https://protomaps.com" rel="noreferrer">Protomaps</a>:
+            вся пирамида тайлов живёт в одном файле и читается по HTTP Range Request,
+            без своего тайлового сервера. Оригинал спецификации, просмотрщик и документация —
+            на <a href="https://pmtiles.io" rel="noreferrer">pmtiles.io</a>
+            и в репозитории
+            <a href="https://github.com/protomaps/PMTiles" rel="noreferrer">protomaps/PMTiles</a>.
+        </p>
+
+        <h2>Что зеркалируем</h2>
+        <p>
+            Мы держим на российских серверах планетарные сборки векторной карты Protomaps
+            (данные <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap</a>)
+            и отдаём их с <a href="https://cdn.pmtiles.ru/">cdn.pmtiles.ru</a>.
+            На главной — полноэкранная карта по этому срезу.
+        </p>
+        <p>
+            Это независимое зеркало, а не официальный продукт Protomaps.
+            Формат, стиль и исходные сборки остаются проектом авторов PMTiles;
+            здесь — доступ к ним из российской инфраструктуры.
+        </p>
+
+        <h2>Как подключить</h2>
+        <p>
+            Актуальный срез на CDN: <code>https://cdn.pmtiles.ru/20260915.pmtiles</code>.
+            В MapLibre GL JS:
+        </p>
+        <pre><code>import { Protocol } from 'pmtiles';
+
+const protocol = new Protocol();
+maplibregl.addProtocol('pmtiles', protocol.tile);
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: {
+    version: 8,
+    sources: {
+      protomaps: {
+        type: 'vector',
+        url: 'pmtiles://https://cdn.pmtiles.ru/20260915.pmtiles',
+      },
+    },
+    layers: [/* стиль Protomaps basemaps */],
+  },
+});</code></pre>
+        <p>
+            Запросы к файлу должны идти с заголовком <code>Range</code>.
+            Для сайта на своём домене на CDN нужно разрешить CORS этого Origin
+            (для <code>esya.ru</code> это уже сделано).
+        </p>
+    </main>
+</body>
+</html>

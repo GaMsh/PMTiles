@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>pmtiles.ru — отечественное зеркало PMTiles</title>
+    <meta name="description" content="Отечественное зеркало проекта pmtiles.io: планетарная векторная карта Protomaps с российских серверов.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.9.0/dist/maplibre-gl.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body class="map-page">
+    <nav class="hud" aria-label="О проекте">
+        <a class="hud__brand" href="./">pmtiles.ru</a>
+        <a class="hud__about" href="about/">О проекте</a>
+    </nav>
+    <div
+        id="map"
+        role="application"
+        aria-label="Интерактивная карта"
+        data-pmtiles-url="pmtiles://https://cdn.pmtiles.ru/20260915.pmtiles"
+        data-dev-proxy="/tiles/20260915.pmtiles"
+        data-center="99.0,61.5"
+        data-zoom="3"
+    ></div>
+    <script type="module" src="js/map.js"></script>
+</body>
+</html>
