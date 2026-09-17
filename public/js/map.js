@@ -373,6 +373,7 @@ function poiCardState(props, tags, extras, status, ctx) {
         title: localizedTag(tags, 'name') || props.name || wikidata.label || wiki.title || 'Без названия',
         meta: poiMeta(props, tags),
         image: wiki.image || wikidata.image || '',
+        imageFull: wiki.imageFull || wikidata.imageFull || wiki.image || wikidata.image || '',
         desc: wiki.extract
             || localizedTag(tags, 'description')
             || wikidata.description
@@ -485,15 +486,17 @@ function keepPopupOnScreen() {
     });
 }
 
-function poiExport({ title, desc, quote, image, facts, props, ref, lngLat, feature }) {
+function poiExport({ title, desc, quote, image, imageFull, facts, props, ref, lngLat, feature }) {
     const point = feature ? featureLngLat(feature, lngLat) : lngLat;
+    const osmId = ref?.id != null && ref.id !== '' ? Number(ref.id) : '';
     const payload = {
         name: title || props?.name || '',
         kind: kindLabel(props?.kind) || props?.kind || '',
         description: desc || '',
         inscription: quote || '',
-        photo: image || '',
-        osm: ref?.ref || '',
+        photo: cleanPhotoUrl(imageFull || image),
+        osmType: ref?.type || '',
+        osmId: Number.isSafeInteger(osmId) ? osmId : (ref?.id || ''),
     };
     if (point && Number.isFinite(point.lng) && Number.isFinite(point.lat)) {
         payload.coordinates = {
@@ -526,7 +529,7 @@ function downloadPoiJson(payload) {
 }
 
 function poiJsonFilename(payload) {
-    const raw = payload.name || payload.osm || 'poi';
+    const raw = payload.name || (payload.osmType && payload.osmId ? `${payload.osmType}_${payload.osmId}` : 'poi');
     const slug = String(raw)
         .replace(/[\\/:*?"<>|]+/g, '')
         .replace(/\s+/g, '_')
@@ -806,7 +809,8 @@ function fetchWikipediaSummary(ref, signal) {
         return {
             title: data.title || '',
             extract: data.extract || '',
-            image: data.thumbnail?.source || data.originalimage?.source || '',
+            image: data.thumbnail?.source || '',
+            imageFull: data.originalimage?.source || data.thumbnail?.source || '',
         };
     });
 }
@@ -859,7 +863,8 @@ function fetchWikidata(qid, signal) {
         return resolveWikidataLabels(relatedIds, signal).then((labels) => ({
             label: langValue(entity.labels),
             description: langValue(entity.descriptions),
-            image: imageName ? commonsFileUrl(imageName) : '',
+            image: imageName ? commonsFileUrl(imageName, 640) : '',
+            imageFull: imageName ? commonsFileUrl(imageName) : '',
             wiki: sitelinkRef(entity.sitelinks),
             facts: wikidataFacts(claims, labels),
         }));
@@ -964,8 +969,35 @@ function sitelinkRef(sitelinks) {
     return null;
 }
 
-function commonsFileUrl(filename) {
-    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=640`;
+function commonsFileUrl(filename, width) {
+    const url = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}`;
+    return width ? `${url}?width=${width}` : url;
+}
+
+function cleanPhotoUrl(raw) {
+    if (!raw) {
+        return '';
+    }
+    try {
+        const url = new URL(raw);
+        for (const key of [...url.searchParams.keys()]) {
+            if (/^(utm_|fbclid|gclid|mc_|ref$)/i.test(key) || key.toLowerCase().startsWith('utm_')) {
+                url.searchParams.delete(key);
+            }
+        }
+        const thumb = url.pathname.match(/\/wikipedia\/([^/]+)\/thumb\/(\w\/\w{2}\/.+?)\/[^/]+$/i);
+        if (thumb) {
+            url.pathname = `/wikipedia/${thumb[1]}/${thumb[2]}`;
+            if (url.hostname === 'thumb.wikimedia.org') {
+                url.hostname = 'upload.wikimedia.org';
+            }
+        }
+        url.searchParams.delete('width');
+        const cleaned = url.toString();
+        return cleaned.endsWith('?') ? cleaned.slice(0, -1) : cleaned;
+    } catch {
+        return String(raw).split('?')[0];
+    }
 }
 
 function xhrJson(url, signal) {
