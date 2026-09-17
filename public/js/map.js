@@ -313,6 +313,7 @@ function openPoiPopup(feature, lngLat) {
 
     const props = feature.properties || {};
     const ref = parseOsmRef(feature);
+    const ctx = { feature, lngLat, ref };
     const card = document.createElement('div');
     card.className = 'poi-card';
     fillPoiCard(card, {
@@ -328,6 +329,7 @@ function openPoiPopup(feature, lngLat) {
             title: props.name || 'Объект OSM',
             meta: kindLabel(props.kind),
             status: 'Не удалось определить OSM id',
+            json: poiExport({ props, lngLat, feature }),
         });
         return;
     }
@@ -337,7 +339,7 @@ function openPoiPopup(feature, lngLat) {
         if (requestId.signal.aborted) {
             return;
         }
-        fillPoiCard(card, poiCardState(props, tags, {}, tags.wikipedia || tags.wikidata ? 'Загрузка описания…' : ''));
+        fillPoiCard(card, poiCardState(props, tags, {}, tags.wikipedia || tags.wikidata ? 'Загрузка описания…' : '', ctx));
         if (!tags.wikipedia && !tags.wikidata) {
             return;
         }
@@ -345,10 +347,10 @@ function openPoiPopup(feature, lngLat) {
             if (requestId.signal.aborted) {
                 return;
             }
-            fillPoiCard(card, poiCardState(props, tags, extras));
+            fillPoiCard(card, poiCardState(props, tags, extras, '', ctx));
         }).catch(() => {
             if (!requestId.signal.aborted) {
-                fillPoiCard(card, poiCardState(props, tags, {}));
+                fillPoiCard(card, poiCardState(props, tags, {}, '', ctx));
             }
         });
     }).catch((error) => {
@@ -359,14 +361,15 @@ function openPoiPopup(feature, lngLat) {
             title: props.name || 'Объект OSM',
             meta: kindLabel(props.kind),
             status: 'Не удалось загрузить данные Overpass',
+            json: poiExport({ props, ref, lngLat, feature }),
         });
     });
 }
 
-function poiCardState(props, tags, extras, status) {
+function poiCardState(props, tags, extras, status, ctx) {
     const wiki = extras.wiki || {};
     const wikidata = extras.wikidata || {};
-    return {
+    const state = {
         title: localizedTag(tags, 'name') || props.name || wikidata.label || wiki.title || 'Без названия',
         meta: poiMeta(props, tags),
         image: wiki.image || wikidata.image || '',
@@ -378,6 +381,14 @@ function poiCardState(props, tags, extras, status) {
         facts: mergeFacts(osmFacts(tags), wikidata.facts || []),
         status: status && !(wiki.extract || wikidata.description) ? status : '',
     };
+    state.json = poiExport({
+        ...state,
+        props,
+        ref: ctx.ref,
+        lngLat: ctx.lngLat,
+        feature: ctx.feature,
+    });
+    return state;
 }
 
 function fillPoiCard(root, state) {
@@ -416,6 +427,16 @@ function fillPoiCard(root, state) {
         body.append(list);
     }
     root.append(body);
+    if (state.json) {
+        const button = createEl('button', 'poi-card__download', 'получить в json');
+        button.type = 'button';
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            downloadPoiJson(state.json);
+        });
+        root.append(button);
+    }
     keepPopupOnScreen();
 }
 
@@ -462,6 +483,55 @@ function keepPopupOnScreen() {
             }
         });
     });
+}
+
+function poiExport({ title, desc, quote, image, facts, props, ref, lngLat, feature }) {
+    const point = feature ? featureLngLat(feature, lngLat) : lngLat;
+    const payload = {
+        name: title || props?.name || '',
+        kind: kindLabel(props?.kind) || props?.kind || '',
+        description: desc || '',
+        inscription: quote || '',
+        photo: image || '',
+        osm: ref?.ref || '',
+    };
+    if (point && Number.isFinite(point.lng) && Number.isFinite(point.lat)) {
+        payload.coordinates = {
+            lon: Number(point.lng.toFixed(7)),
+            lat: Number(point.lat.toFixed(7)),
+        };
+    }
+    if (facts?.length) {
+        payload.facts = Object.fromEntries(facts.map((fact) => [fact.label, fact.value]));
+    }
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => {
+        if (value && typeof value === 'object') {
+            return true;
+        }
+        return value !== '' && value != null;
+    }));
+}
+
+function downloadPoiJson(payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = poiJsonFilename(payload);
+    link.rel = 'noopener';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function poiJsonFilename(payload) {
+    const raw = payload.name || payload.osm || 'poi';
+    const slug = String(raw)
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .replace(/\s+/g, '_')
+        .slice(0, 80);
+    return `${slug || 'poi'}.json`;
 }
 
 function createEl(tag, className, text) {

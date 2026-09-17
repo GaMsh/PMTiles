@@ -201,6 +201,8 @@ body.map-page {
 }
 
 .poi-card {
+    display: flex;
+    flex-direction: column;
     min-width: 240px;
     max-width: 360px;
     max-height: min(62vh, 440px);
@@ -279,6 +281,30 @@ body.map-page {
 
 .poi-card__facts dd {
     margin: 0;
+}
+
+.poi-card__download {
+    position: sticky;
+    bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    margin: 10px 16px 12px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(18, 20, 24, 0.92);
+    box-shadow: 0 -10px 16px rgba(18, 20, 24, 0.55);
+    color: var(--paper);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.poi-card__download:hover,
+.poi-card__download:focus-visible {
+    background: rgba(243, 239, 230, 0.24);
 }
 
 @media (max-width: 640px) {
