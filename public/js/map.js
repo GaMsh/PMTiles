@@ -16,7 +16,12 @@ const KEEP_POI_KINDS = [
     'park',
 ];
 
+const EARLY_POI_KINDS = ['monument', 'memorial', 'attraction'];
+
 const HIDDEN_LANDCOVER_KINDS = ['grass', 'grassland', 'scrub'];
+
+const MAP_LANGS = ['ru', 'en', 'it', 'fr', 'es', 'tr'];
+const MAP_LANG_STORAGE = 'pmtiles-map-lang';
 
 const OSM_TYPES = {
     1: 'node',
@@ -45,7 +50,7 @@ const poiPopup = new maplibregl.Popup({
     closeOnClick: false,
     maxWidth: '380px',
     className: 'poi-popup',
-    offset: 18,
+    offset: 22,
     anchor: 'bottom',
 });
 
@@ -68,9 +73,7 @@ const center = (el.dataset.center || '99.0,61.5').split(',').map(Number);
 const zoom = Number(el.dataset.zoom || '3');
 
 const flavor = namedFlavor('light');
-const styleLayers = layers('protomaps', flavor, { lang: 'ru' })
-    .map(restyleLayer)
-    .filter(Boolean);
+let mapLang = readMapLang();
 
 const map = new maplibregl.Map({
     container: el,
@@ -86,7 +89,7 @@ const map = new maplibregl.Map({
                     '<a href="https://protomaps.com" rel="noreferrer">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap</a> · <a href="https://pmtiles.io" rel="noreferrer">PMTiles</a>',
             },
         },
-        layers: styleLayers,
+        layers: buildStyleLayers(mapLang),
     },
     center,
     zoom,
@@ -104,11 +107,14 @@ map.addControl(new maplibregl.GeolocateControl({
 
 window.pmtilesMap = map;
 
+bindMapLangSwitch();
+
 map.on('load', async () => {
     await addPoiIcons(map);
     if (map.getLayer('pois')) {
         map.setLayoutProperty('pois', 'icon-image', poiIconImage());
     }
+    applyMapLang(mapLang);
     el.dataset.ready = PMTILES_VERSION;
 });
 
@@ -165,6 +171,83 @@ function restyleLayer(layer) {
     return next;
 }
 
+function isMapLang(value) {
+    return MAP_LANGS.includes(value);
+}
+
+function readMapLang() {
+    const param = new URLSearchParams(location.search).get('lang');
+    if (isMapLang(param)) {
+        return param;
+    }
+    try {
+        const stored = localStorage.getItem(MAP_LANG_STORAGE);
+        if (isMapLang(stored)) {
+            return stored;
+        }
+    } catch {
+        // ignore
+    }
+    return 'ru';
+}
+
+function buildStyleLayers(lang) {
+    return layers('protomaps', flavor, { lang })
+        .map(restyleLayer)
+        .filter(Boolean);
+}
+
+function bindMapLangSwitch() {
+    const select = document.getElementById('map-lang');
+    if (!select) {
+        return;
+    }
+    select.value = mapLang;
+    select.addEventListener('change', () => {
+        setMapLang(select.value);
+    });
+}
+
+function setMapLang(lang) {
+    if (!isMapLang(lang) || lang === mapLang) {
+        return;
+    }
+    mapLang = lang;
+    try {
+        localStorage.setItem(MAP_LANG_STORAGE, lang);
+    } catch {
+        // ignore
+    }
+    const url = new URL(location.href);
+    if (lang === 'ru') {
+        url.searchParams.delete('lang');
+    } else {
+        url.searchParams.set('lang', lang);
+    }
+    history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    applyMapLang(lang);
+}
+
+function applyMapLang(lang) {
+    if (!map.isStyleLoaded()) {
+        return;
+    }
+    const nextLayers = buildStyleLayers(lang);
+    for (const layer of nextLayers) {
+        if (!map.getLayer(layer.id)) {
+            continue;
+        }
+        const field = layer.layout?.['text-field'];
+        if (field != null) {
+            map.setLayoutProperty(layer.id, 'text-field', field);
+        }
+        const font = layer.layout?.['text-font'];
+        if (font != null) {
+            map.setLayoutProperty(layer.id, 'text-font', font);
+        }
+    }
+}
+
 function restyleRoads(layer) {
     if (
         layer.id.includes('labels')
@@ -207,15 +290,32 @@ function restylePois(layer) {
     next.filter = [
         'all',
         ['in', ['get', 'kind'], ['literal', KEEP_POI_KINDS]],
-        ['>=', ['zoom'], ['+', ['coalesce', ['get', 'min_zoom'], 14], -2]],
+        ['any',
+            ['has', 'name'],
+            ['has', 'name:ru'],
+            ['has', 'name:en'],
+            ['has', 'pgf:name'],
+        ],
+        ['>=', ['zoom'], [
+            '-',
+            ['coalesce', ['get', 'min_zoom'], 14],
+            ['match', ['get', 'kind'], EARLY_POI_KINDS, 5, 2],
+        ]],
+    ];
+    next.layout['symbol-sort-key'] = [
+        'match',
+        ['get', 'kind'],
+        EARLY_POI_KINDS,
+        ['-', ['coalesce', ['get', 'min_zoom'], 14], 8],
+        ['coalesce', ['get', 'min_zoom'], 14],
     ];
     next.layout['icon-optional'] = true;
     next.layout['text-optional'] = true;
     next.layout['icon-image'] = poiIconImage();
-    next.layout['icon-size'] = 1;
+    next.layout['icon-size'] = 0.7;
     next.layout['icon-anchor'] = 'center';
     next.layout['text-anchor'] = 'top';
-    next.layout['text-offset'] = [0, 0.7];
+    next.layout['text-offset'] = [0, 1.45];
     delete next.layout['text-variable-anchor'];
     next.paint['text-color'] = [
         'match',
@@ -246,7 +346,7 @@ function poiIconImage() {
 
 function poiIconSvg(glyph, palette = POI_PINK) {
     const [stroke, fill] = palette;
-    return `<svg width="19" height="19" viewBox="0 0 19 19" xmlns="http://www.w3.org/2000/svg">
+    return `<svg width="38" height="38" viewBox="0 0 19 19" xmlns="http://www.w3.org/2000/svg">
         <rect x="0.7" y="0.7" width="17.6" height="17.6" rx="4.2" fill="${fill}" stroke="${stroke}" stroke-width="1.35"/>
         <g fill="none" stroke="${stroke}" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>
     </svg>`;
@@ -257,7 +357,9 @@ function addSvgIcon(mapInstance, id, svg) {
         const img = new Image();
         img.onload = () => {
             if (!mapInstance.hasImage(id)) {
-                mapInstance.addImage(id, img);
+                const size = 38;
+                const pixelRatio = img.width > size ? img.width / size : 1;
+                mapInstance.addImage(id, img, { pixelRatio });
             }
             resolve();
         };
@@ -317,7 +419,7 @@ function openPoiPopup(feature, lngLat) {
     const card = document.createElement('div');
     card.className = 'poi-card';
     fillPoiCard(card, {
-        title: props.name || 'Объект OSM',
+        title: localizedName(props) || 'Объект OSM',
         meta: kindLabel(props.kind),
         status: 'Загрузка данных OpenStreetMap…',
     });
@@ -326,7 +428,7 @@ function openPoiPopup(feature, lngLat) {
 
     if (!ref) {
         fillPoiCard(card, {
-            title: props.name || 'Объект OSM',
+            title: localizedName(props) || 'Объект OSM',
             meta: kindLabel(props.kind),
             status: 'Не удалось определить OSM id',
             json: poiExport({ props, lngLat, feature }),
@@ -358,7 +460,7 @@ function openPoiPopup(feature, lngLat) {
             return;
         }
         fillPoiCard(card, {
-            title: props.name || 'Объект OSM',
+            title: localizedName(props) || 'Объект OSM',
             meta: kindLabel(props.kind),
             status: 'Не удалось загрузить данные Overpass',
             json: poiExport({ props, ref, lngLat, feature }),
@@ -370,7 +472,7 @@ function poiCardState(props, tags, extras, status, ctx) {
     const wiki = extras.wiki || {};
     const wikidata = extras.wikidata || {};
     const state = {
-        title: localizedTag(tags, 'name') || props.name || wikidata.label || wiki.title || 'Без названия',
+        title: localizedName(tags) || localizedName(props) || wikidata.label || wiki.title || 'Без названия',
         meta: poiMeta(props, tags),
         image: wiki.image || wikidata.image || '',
         imageFull: wiki.imageFull || wikidata.imageFull || wiki.image || wikidata.image || '',
@@ -456,7 +558,7 @@ function keepPopupOnScreen() {
                 return;
             }
 
-            const pad = { top: 58, right: 52, bottom: 36, left: 12 };
+            const pad = { top: 100, right: 52, bottom: 36, left: 12 };
             const pop = popupEl.getBoundingClientRect();
             const box = mapEl.getBoundingClientRect();
             const minTop = box.top + pad.top;
@@ -586,8 +688,22 @@ function addFact(facts, label, value) {
     facts.push({ label, value });
 }
 
+function localizedName(obj) {
+    return localizedTag(obj, 'name');
+}
+
 function localizedTag(tags, key) {
-    return tags[key] || tags[`${key}:ru`] || tags[`${key}:en`] || '';
+    if (!tags) {
+        return '';
+    }
+    const fallbacks = [mapLang, 'en', 'ru'].filter((lang, index, list) => list.indexOf(lang) === index);
+    for (const lang of fallbacks) {
+        const value = tags[`${key}:${lang}`];
+        if (value) {
+            return value;
+        }
+    }
+    return tags[key] || '';
 }
 
 function uniqueText(values) {
@@ -758,27 +874,31 @@ function fetchOverpassTags(ref, signal) {
 }
 
 function fetchOpenExtras(tags, signal) {
-    const wikiRef = parseWikipediaRef(tags.wikipedia);
+    const wikiRef = wikipediaRefFromTags(tags);
     const qid = parseWikidataId(tags.wikidata);
     if (!wikiRef && !qid) {
         return Promise.resolve({});
     }
 
     const tasks = [];
-    if (wikiRef) {
+    if (wikiRef && wikiRef.lang === mapLang) {
         tasks.push(fetchWikipediaSummary(wikiRef, signal).then((wiki) => (wiki ? { wiki } : {})).catch(() => ({})));
     }
     if (qid) {
         tasks.push(fetchWikidata(qid, signal).then((wikidata) => ({ wikidata })).catch(() => ({})));
     }
 
-    return Promise.all(tasks).then((parts) => {
+    return Promise.all(tasks.length ? tasks : [Promise.resolve({})]).then((parts) => {
         const extras = Object.assign({}, ...parts);
-        if (extras.wiki || !extras.wikidata?.wiki) {
+        if (extras.wiki) {
             return extras;
         }
-        return fetchWikipediaSummary(extras.wikidata.wiki, signal)
-            .then((wiki) => ({ ...extras, wiki }))
+        const fallback = extras.wikidata?.wiki || wikiRef;
+        if (!fallback) {
+            return extras;
+        }
+        return fetchWikipediaSummary(fallback, signal)
+            .then((wiki) => (wiki ? { ...extras, wiki } : extras))
             .catch(() => extras);
     });
 }
@@ -786,6 +906,10 @@ function fetchOpenExtras(tags, signal) {
 function parseWikidataId(value) {
     const match = String(value || '').match(/Q\d+/i);
     return match ? match[0].toUpperCase() : '';
+}
+
+function wikipediaRefFromTags(tags) {
+    return parseWikipediaRef(tags[`wikipedia:${mapLang}`] || tags.wikipedia);
 }
 
 function parseWikipediaRef(value) {
@@ -796,7 +920,7 @@ function parseWikipediaRef(value) {
     if (sep > 0 && sep <= 12) {
         return { lang: value.slice(0, sep), title: value.slice(sep + 1) };
     }
-    return { lang: 'ru', title: value };
+    return { lang: mapLang, title: value };
 }
 
 function fetchWikipediaSummary(ref, signal) {
@@ -837,8 +961,8 @@ function fetchWikidata(qid, signal) {
         action: 'wbgetentities',
         ids: qid,
         props: 'labels|descriptions|claims|sitelinks',
-        languages: 'ru|en',
-        sitefilter: 'ruwiki|enwiki',
+        languages: wikiLangList(),
+        sitefilter: wikiSiteFilter(),
         format: 'json',
         origin: '*',
     });
@@ -884,7 +1008,7 @@ function resolveWikidataLabels(ids, signal) {
         action: 'wbgetentities',
         ids: unique.join('|'),
         props: 'labels',
-        languages: 'ru|en',
+        languages: wikiLangList(),
         format: 'json',
         origin: '*',
     });
@@ -956,15 +1080,30 @@ function formatWikidataTime(value) {
 }
 
 function langValue(entries) {
-    return entries?.ru?.value || entries?.en?.value || Object.values(entries || {})[0]?.value || '';
+    if (!entries) {
+        return '';
+    }
+    return entries[mapLang]?.value
+        || entries.en?.value
+        || entries.ru?.value
+        || Object.values(entries)[0]?.value
+        || '';
+}
+
+function wikiLangList() {
+    return [...new Set([mapLang, 'en', 'ru'])].join('|');
+}
+
+function wikiSiteFilter() {
+    return [...new Set([`${mapLang}wiki`, 'ruwiki', 'enwiki'])].join('|');
 }
 
 function sitelinkRef(sitelinks) {
-    if (sitelinks?.ruwiki?.title) {
-        return { lang: 'ru', title: sitelinks.ruwiki.title };
-    }
-    if (sitelinks?.enwiki?.title) {
-        return { lang: 'en', title: sitelinks.enwiki.title };
+    const order = [`${mapLang}wiki`, 'ruwiki', 'enwiki'];
+    for (const key of order) {
+        if (sitelinks?.[key]?.title) {
+            return { lang: key.replace(/wiki$/, ''), title: sitelinks[key].title };
+        }
     }
     return null;
 }
