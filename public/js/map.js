@@ -46,6 +46,7 @@ const poiPopup = new maplibregl.Popup({
     maxWidth: '380px',
     className: 'poi-popup',
     offset: 18,
+    anchor: 'bottom',
 });
 
 let overpassAbort = null;
@@ -385,7 +386,11 @@ function fillPoiCard(root, state) {
         const img = createEl('img', 'poi-card__photo');
         img.src = state.image;
         img.alt = state.title || '';
-        img.addEventListener('error', () => img.remove());
+        img.addEventListener('load', keepPopupOnScreen);
+        img.addEventListener('error', () => {
+            img.remove();
+            keepPopupOnScreen();
+        });
         root.append(img);
     }
     const body = createEl('div', 'poi-card__body');
@@ -411,6 +416,52 @@ function fillPoiCard(root, state) {
         body.append(list);
     }
     root.append(body);
+    keepPopupOnScreen();
+}
+
+let popupPanFrame = 0;
+
+function keepPopupOnScreen() {
+    cancelAnimationFrame(popupPanFrame);
+    popupPanFrame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            if (!poiPopup.isOpen()) {
+                return;
+            }
+            const popupEl = poiPopup.getElement();
+            const mapEl = map.getContainer();
+            if (!popupEl || !mapEl) {
+                return;
+            }
+
+            const pad = { top: 58, right: 52, bottom: 36, left: 12 };
+            const pop = popupEl.getBoundingClientRect();
+            const box = mapEl.getBoundingClientRect();
+            const minTop = box.top + pad.top;
+            const maxBottom = box.bottom - pad.bottom;
+            const minLeft = box.left + pad.left;
+            const maxRight = box.right - pad.right;
+
+            let dx = 0;
+            let dy = 0;
+            if (pop.height >= maxBottom - minTop) {
+                dy = pop.top - minTop;
+            } else if (pop.top < minTop) {
+                dy = pop.top - minTop;
+            } else if (pop.bottom > maxBottom) {
+                dy = pop.bottom - maxBottom;
+            }
+            if (pop.left < minLeft) {
+                dx = pop.left - minLeft;
+            } else if (pop.right > maxRight) {
+                dx = pop.right - maxRight;
+            }
+
+            if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+                map.panBy([dx, dy], { duration: 240 });
+            }
+        });
+    });
 }
 
 function createEl(tag, className, text) {
