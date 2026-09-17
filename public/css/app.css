@@ -160,6 +160,127 @@ body.map-page {
     font-family: system-ui, sans-serif;
 }
 
+.poi-popup .maplibregl-popup-content {
+    padding: 0;
+    max-height: min(62vh, 440px);
+    overflow: hidden;
+    border-radius: 16px;
+    background: rgba(18, 20, 24, 0.92);
+    color: var(--paper);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.poi-popup .maplibregl-popup-tip {
+    border-top-color: rgba(18, 20, 24, 0.92);
+}
+
+.poi-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.poi-popup.maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.poi-popup.maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+    border-bottom-color: rgba(18, 20, 24, 0.92);
+    border-top-color: transparent;
+}
+
+.poi-popup .maplibregl-popup-close-button {
+    color: #fff;
+    font-size: 22px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 6px;
+    line-height: 28px;
+    border-radius: 999px;
+    background: rgba(18, 20, 24, 0.55);
+}
+
+.poi-popup .maplibregl-popup-close-button:hover {
+    background: rgba(18, 20, 24, 0.8);
+    color: #fff;
+}
+
+.poi-card {
+    min-width: 240px;
+    max-width: 360px;
+    max-height: min(62vh, 440px);
+    overflow: auto;
+    padding: 0 0 14px;
+}
+
+.poi-card__photo {
+    display: block;
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 16px 16px 0 0;
+}
+
+.poi-card__body {
+    padding: 12px 36px 2px 16px;
+}
+
+.poi-card__title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.poi-card__meta,
+.poi-card__status,
+.poi-card__desc,
+.poi-card__quote {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.poi-card__meta,
+.poi-card__status {
+    color: rgba(243, 239, 230, 0.72);
+}
+
+.poi-card__meta {
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.poi-card__status {
+    font-size: 13px;
+}
+
+.poi-card__desc {
+    overflow: visible;
+}
+
+.poi-card__quote {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(243, 239, 230, 0.14);
+    color: rgba(243, 239, 230, 0.88);
+    font-size: 12px;
+    font-style: italic;
+    white-space: pre-wrap;
+}
+
+.poi-card__facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    margin: 10px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.poi-card__facts dt {
+    color: rgba(243, 239, 230, 0.55);
+}
+
+.poi-card__facts dd {
+    margin: 0;
+}
+
 @media (max-width: 640px) {
     .hud {
         top: 8px;
