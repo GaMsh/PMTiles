@@ -45,7 +45,7 @@
 
         <h2>Как подключить</h2>
         <p>
-            Актуальный срез на CDN: <code>https://cdn.pmtiles.ru/20260915.pmtiles</code>.
+            Актуальный срез на CDN: <code>https://cdn.pmtiles.ru/20260918.pmtiles</code>.
             В MapLibre GL JS:
         </p>
         <pre><code>import { Protocol } from 'pmtiles';
@@ -60,7 +60,7 @@ const map = new maplibregl.Map({
     sources: {
       protomaps: {
         type: 'vector',
-        url: 'pmtiles://https://cdn.pmtiles.ru/20260915.pmtiles',
+        url: 'pmtiles://https://cdn.pmtiles.ru/20260918.pmtiles',
       },
     },
     layers: [/* стиль Protomaps basemaps */],
@@ -68,8 +68,6 @@ const map = new maplibregl.Map({
 });</code></pre>
         <p>
             Запросы к файлу должны идти с заголовком <code>Range</code>.
-            Для сайта на своём домене на CDN нужно разрешить CORS этого Origin
-            (для <code>esya.ru</code> это уже сделано).
         </p>
     </main>
 </body>

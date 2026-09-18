@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static server with a Range-aware proxy to cdn.pmtiles.ru (CDN CORS is esya.ru-only)."""
+"""Static server with a Range-aware proxy to cdn.pmtiles.ru."""
 
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 import os
