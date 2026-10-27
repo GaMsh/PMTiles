@@ -1,4 +1,4 @@
-export const PMTILES_VERSION = '20261019';
+export const PMTILES_VERSION = '20261027';
 export const PMTILES_CDN_URL = `https://cdn.pmtiles.ru/${PMTILES_VERSION}.pmtiles`;
 
 /** Public Overpass interpreters, same class of endpoints as overpass-turbo. */
