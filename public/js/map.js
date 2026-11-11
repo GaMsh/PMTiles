@@ -1,4 +1,4 @@
-import * as maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@6.9.0/dist/maplibre-gl.mjs';
+import * as maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@6.17.0/dist/maplibre-gl.mjs';
 import { Protocol } from 'https://cdn.jsdelivr.net/npm/pmtiles@4.5.0/+esm';
 import { layers, namedFlavor } from 'https://cdn.jsdelivr.net/npm/@protomaps/basemaps@5.7.2/+esm';
 import { OVERPASS_ENDPOINTS, PMTILES_VERSION } from './config.js';
@@ -11,6 +11,7 @@ const KEEP_POI_KINDS = [
     'art',
     'attraction',
     'viewpoint',
+    'hotel',
     'square',
     'plaza',
     'park',
@@ -20,7 +21,7 @@ const EARLY_POI_KINDS = ['monument', 'memorial', 'attraction'];
 
 const HIDDEN_LANDCOVER_KINDS = ['grass', 'grassland', 'scrub'];
 
-const MAP_LANGS = ['ru', 'en', 'it', 'fr', 'es', 'tr'];
+const MAP_LANGS = ['ru', 'en'];
 const MAP_LANG_STORAGE = 'pmtiles-map-lang';
 
 const OSM_TYPES = {
@@ -40,6 +41,7 @@ const KIND_LABELS = {
     art: 'арт-объект',
     attraction: 'достопримечательность',
     viewpoint: 'смотровая точка',
+    hotel: 'отель',
     square: 'площадь',
     plaza: 'площадь',
     park: 'парк',
@@ -61,7 +63,7 @@ if (!el) {
     throw new Error('Карта не инициализирована');
 }
 
-maplibregl.setWorkerUrl('https://cdn.jsdelivr.net/npm/maplibre-gl@6.9.0/dist/maplibre-gl-worker.mjs');
+maplibregl.setWorkerUrl('https://cdn.jsdelivr.net/npm/maplibre-gl@6.17.0/dist/maplibre-gl-worker.mjs');
 
 const protocol = new Protocol();
 maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -176,14 +178,22 @@ function isMapLang(value) {
 }
 
 function readMapLang() {
-    const param = new URLSearchParams(location.search).get('lang');
+    const url = new URL(location.href);
+    const param = url.searchParams.get('lang');
     if (isMapLang(param)) {
         return param;
+    }
+    if (param) {
+        url.searchParams.delete('lang');
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
     }
     try {
         const stored = localStorage.getItem(MAP_LANG_STORAGE);
         if (isMapLang(stored)) {
             return stored;
+        }
+        if (stored) {
+            localStorage.removeItem(MAP_LANG_STORAGE);
         }
     } catch {
         // ignore
@@ -295,6 +305,7 @@ function restylePois(layer) {
             ['has', 'name:ru'],
             ['has', 'name:en'],
             ['has', 'pgf:name'],
+            ['==', ['get', 'kind'], 'viewpoint'],
         ],
         ['>=', ['zoom'], [
             '-',
@@ -338,6 +349,7 @@ function poiIconImage() {
         ['artwork', 'art'], 'pm-icon-artwork',
         'attraction', 'pm-icon-attraction',
         'viewpoint', 'pm-icon-viewpoint',
+        'hotel', 'pm-icon-hotel',
         ['square', 'plaza'], 'pm-icon-square',
         'park', 'pm-icon-park',
         'pm-icon-attraction',
@@ -395,6 +407,11 @@ function addPoiIcons(mapInstance) {
         addSvgIcon(mapInstance, 'pm-icon-viewpoint', poiIconSvg(`
             <path d="M4.6 9.5 Q9.5 5.2 14.4 9.5 Q9.5 13.8 4.6 9.5 Z"/>
             <circle cx="9.5" cy="9.5" r="1.6"/>
+        `)),
+        addSvgIcon(mapInstance, 'pm-icon-hotel', poiIconSvg(`
+            <path d="M4.8 10.8 V7.2 H7.6 V9.4 H14.2 V10.8"/>
+            <path d="M4.8 10.8 H14.2"/>
+            <path d="M5.6 10.8 V13.8 M13.4 10.8 V13.8"/>
         `)),
         addSvgIcon(mapInstance, 'pm-icon-square', poiIconSvg(`
             <rect x="5" y="5" width="9" height="9" rx="0.6"/>
