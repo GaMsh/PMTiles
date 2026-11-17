@@ -15,6 +15,7 @@ const KEEP_POI_KINDS = [
     'square',
     'plaza',
     'park',
+    'aerodrome',
 ];
 
 const EARLY_POI_KINDS = ['monument', 'memorial', 'attraction'];
@@ -32,6 +33,7 @@ const OSM_TYPES = {
 
 const POI_PINK = ['#EF56BA', '#F9EBFE'];
 const POI_GREEN = ['#2F9E5F', '#E7F8EE'];
+const POI_BLUE = ['#2A8FDB', '#E7F3FC'];
 
 const KIND_LABELS = {
     monument: 'памятник',
@@ -45,6 +47,7 @@ const KIND_LABELS = {
     square: 'площадь',
     plaza: 'площадь',
     park: 'парк',
+    aerodrome: 'аэропорт',
 };
 
 const poiPopup = new maplibregl.Popup({
@@ -71,8 +74,8 @@ maplibregl.addProtocol('pmtiles', protocol.tile);
 const pmtilesUrl = el.dataset.pmtilesUrl
     || `pmtiles://${location.origin}/tiles/${PMTILES_VERSION}.pmtiles`;
 
-const center = (el.dataset.center || '99.0,61.5').split(',').map(Number);
-const zoom = Number(el.dataset.zoom || '3');
+const center = (el.dataset.center || '30.3158,59.9391').split(',').map(Number);
+const zoom = Number(el.dataset.zoom || '16');
 
 const flavor = namedFlavor('light');
 let mapLang = readMapLang();
@@ -141,8 +144,11 @@ map.on('mousemove', (event) => {
 });
 
 function restyleLayer(layer) {
-    if (layer.id === 'buildings' || layer.id === 'address_label' || layer.id === 'places_subplace') {
+    if (layer.id === 'address_label' || layer.id === 'places_subplace') {
         return null;
+    }
+    if (layer.id === 'buildings') {
+        return restyleBuildings(layer);
     }
     if (layer.id === 'pois') {
         return restylePois(layer);
@@ -258,6 +264,32 @@ function applyMapLang(lang) {
     }
 }
 
+function restyleBuildings(layer) {
+    return {
+        id: layer.id,
+        type: 'line',
+        source: layer.source,
+        'source-layer': layer['source-layer'],
+        minzoom: 14,
+        filter: ['==', 'kind', 'building'],
+        layout: {
+            'line-cap': 'round',
+            'line-join': 'round',
+        },
+        paint: {
+            'line-color': '#6d655c',
+            'line-width': [
+                'interpolate',
+                ['linear'],
+                ['zoom'],
+                14, 0.5,
+                16, 1.15,
+                18, 1.8,
+            ],
+        },
+    };
+}
+
 function restyleRoads(layer) {
     if (
         layer.id.includes('labels')
@@ -332,6 +364,7 @@ function restylePois(layer) {
         'match',
         ['get', 'kind'],
         'park', POI_GREEN[0],
+        'aerodrome', POI_BLUE[0],
         POI_PINK[0],
     ];
     next.paint['text-halo-color'] = flavor.earth;
@@ -352,6 +385,7 @@ function poiIconImage() {
         'hotel', 'pm-icon-hotel',
         ['square', 'plaza'], 'pm-icon-square',
         'park', 'pm-icon-park',
+        'aerodrome', 'pm-icon-airport',
         'pm-icon-attraction',
     ];
 }
@@ -421,6 +455,9 @@ function addPoiIcons(mapInstance) {
             <path d="M9.5 4.6 C7.2 4.6 5.8 6.6 6.4 8.6 C5.2 8.8 4.6 10.2 5.4 11.4 H13.6 C14.4 10.2 13.8 8.8 12.6 8.6 C13.2 6.6 11.8 4.6 9.5 4.6 Z"/>
             <path d="M9.5 11.4 V14.4 M7.8 14.4 H11.2"/>
         `, POI_GREEN)),
+        addSvgIcon(mapInstance, 'pm-icon-airport', poiIconSvg(`
+            <path fill="${POI_BLUE[0]}" stroke="none" d="M9.5 4.2 L10.15 8.2 L14.3 9.65 V10.55 L10.05 10.05 L9.8 13.15 L11.2 14.25 V14.95 L9.5 14.4 L7.8 14.95 V14.25 L9.2 13.15 L8.95 10.05 L4.7 10.55 V9.65 L8.85 8.2 Z"/>
+        `, POI_BLUE)),
     ]);
 }
 
